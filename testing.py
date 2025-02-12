@@ -62,7 +62,7 @@ while cv2.getWindowProperty('Recognition Model', 0) >= 0:
         break
     elif key == 115: # s key - used to swap to an alternative camera
         cap.release()
-        camera = (camera + 1) % 2
+        camera = (camera + 1) % 3
         cap = cv2.VideoCapture(camera)
 
 # Release the webcam

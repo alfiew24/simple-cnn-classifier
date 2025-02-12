@@ -1,1 +1,1 @@
-'Happy', 'Sad', 'Surprised', 'stop'
+'Passport', 'Bottle', 'stop'

@@ -1,63 +1,74 @@
+import os
 import cv2
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from tensorflow import keras
+import matplotlib.pyplot as plt
 
 # User inputs --
 image_size = 256 # Size that the model reduces the images to during pre-processing
 num_epochs = 10
-reset = True # When set to false, ensure the same number of classes are used and in the same order as previously
+reset_model = True # When set to false, ensure the same number of classes are used and in the same order as previously
+reset_data = True
 # --------------
 
 # Creating the model! (feel free to tweak)
-if reset:
+if reset_model:
     model = keras.Sequential([
-        keras.layers.Conv2D(32, (3, 3), input_shape=(image_size, image_size, 3), activation='relu'),
+        keras.layers.Input((image_size, image_size, 3)),
+        keras.layers.Conv2D(8, (5, 5), 3, activation='relu'),
         keras.layers.MaxPool2D(pool_size=2),
         keras.layers.Conv2D(16, (3, 3), activation='relu'),
         keras.layers.MaxPool2D(pool_size=2),
         keras.layers.Flatten(),
-        keras.layers.Dense(10, activation='sigmoid')
+        keras.layers.Dense(5, activation='sigmoid')
         # Final output layer is excluded here, added in once the classes are known
     ])
 
 else:
     model = keras.models.load_model('cnn_model.keras')
 
-# Lists to store the photos and labels
-pics, labels, label_names = [], [], [input('Choose a label name for the first class: ')]
+if reset_data:
+    # Lists to store the photos and labels
+    pics, labels, label_names = [], [], [input('Choose a label name for the first class: ')]
 
-# Initialize the webcam
-cap = cv2.VideoCapture(1)
-[cap.read() for i in range(50)] # Allow the camera to adjust to lighting
+    # Initialize the webcam
+    cap = cv2.VideoCapture(1)
+    [cap.read() for i in range(50)] # Allow the camera to adjust to lighting
 
-# Photo taking loop, type "stop" to exit, enter key to take a photo, anything else to define the next class --
-while label_names[-1].lower() != 'stop':
+    # Photo taking loop, type "stop" to exit, enter key to take a photo, anything else to define the next class --
+    while label_names[-1].lower() != 'stop':
 
-    print(f'\nTaking photos of {label_names[-1]}')
+        print(f'\nTaking photos of {label_names[-1]}')
 
-    label = ''
-    while label == '':
-        label = input(f'Press enter to take a photo, enter the next class name to move on or \"stop\" to exit ({labels.count(len(label_names) - 1)} photos): ')
-        
-        if label != '':
-            break
+        label = ''
+        while label == '':
+            label = input(f'Press enter to take a photo, enter the next class name to move on or \"stop\" to exit ({labels.count(len(label_names) - 1)} photos): ')
+            
+            if label != '':
+                break
 
-        ret, frame = cap.read()
-        pics.append(frame)
-        labels.append(len(label_names) - 1)
+            ret, frame = cap.read()
+            pics.append(frame)
+            labels.append(len(label_names) - 1)
 
-    label_names.append(label)
-# ------------------------------------------------------------------------------------------------------------
+        label_names.append(label)
+    # ------------------------------------------------------------------------------------------------------------
 
-# Release the webcam
-cap.release()
-cv2.destroyAllWindows()
+    # Release the webcam
+    cap.release()
+    cv2.destroyAllWindows()
+
+else:
+    pics, labels = [], []
+    for file in os.listdir('photos'):
+        if os.path.isfile('photos/'+file):
+            pics.append(cv2.imread('photos/'+file))
+            labels.append(int(file.split(' ')[0]))
 
 # Adding the output layer of the model now that the class labels are known
-if reset:
-    model.add(keras.layers.Dense(len(label_names)-1, activation='softmax'))
+if reset_model:
+    model.add(keras.layers.Dense(len(set(labels)), activation='softmax'))
 
 def generate_data(image, N, size=64):
     """
@@ -109,12 +120,26 @@ model.summary()
 model.fit(X, y, epochs=num_epochs)
 model.save('cnn_model.keras') # Saving the trained model
 
-# Writing the class labels to a txt file
-with open('class_names.txt', 'w') as file:
-    for l in label_names:
-        if l != 'stop':
-            file.write("\'" + l + "\', ")
-        else:
-            file.write("\'stop\'")
+if reset_data:
+    # Writing the class labels to a txt file
+    with open('class_names.txt', 'w') as file:
+        for l in label_names:
+            if l != 'stop':
+                file.write("\'" + l + "\', ")
+            else:
+                file.write("\'stop\'")
+
+    # Deleting old photos and saving the new ones --
+    print('Removing old photos', end='\r')
+    for file in os.listdir('photos'):
+        if os.path.isfile('photos/'+file):
+            os.remove('photos/'+file)
+
+    print('Saving new photos  ', end='\r')
+    for i, pic in enumerate(pics):
+        cv2.imwrite(f'photos/{labels[i]} {i}.jpg', pic, )
+
+    print('Done!            ')
+    # ----------------------------------------------
 
 # --------------------
